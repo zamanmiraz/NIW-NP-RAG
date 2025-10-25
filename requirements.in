@@ -27,7 +27,7 @@ vl-convert-python>=1.6.0        # For large dataset (TNSE output) for Altair
 # For the multi-modal notebook
 colpali_engine>=0.3.1 
 huggingface_hub[hf_transfer] 
-transformers>=4.45.0 
+transformers==4.41.2
 stamina 
 rich
 rich-theme-manager
@@ -35,3 +35,13 @@ bm25s # For Hybrid Search
 PyStemmer # for BM25 Hybrid Search
 pdf2image # for multi modal demo
 pymupdf4llm # For PDF exercise
+torch==2.3.1
+torchvision
+torchaudio
+langchain
+langchain-community
+langchain-experimental
+langchain-huggingface
+langchain[google-genai]
+pypdf
+faiss-cpu
