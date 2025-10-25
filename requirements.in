@@ -25,9 +25,9 @@ vl-convert-python>=1.6.0        # For large dataset (TNSE output) for Altair
 # nbformat
 # ipywidgets
 # For the multi-modal notebook
-colpali_engine>=0.3.1 
+transformers>=4.45.0
+colpali_engine>=0.3.1
 huggingface_hub[hf_transfer] 
-transformers==4.41.2
 stamina 
 rich
 rich-theme-manager
