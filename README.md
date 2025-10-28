@@ -2,10 +2,39 @@
 
 ## Retrieval-Augmented Generation (RAG) Pipeline for Analyzing USCIS AAO Case Documents
 
-This repository implements a **Retrieval-Augmented Generation (RAG)** system built to analyze **USCIS Administrative Appeals Office (AAO)** case PDFs — particularly for **EB2 National Interest Waiver (NIW)** petitions.  
+This repository implements a **Retrieval-Augmented Generation (RAG)** system built to analyze **USCIS Administrative Appeals Office (AAO)** case PDFs — particularly for **National Interest Waiver (NIW)** petitions.  
 The pipeline semantically indexes and retrieves case information to support data-driven insights and question answering over hundreds of past case decisions.
 
 ---
+
+## Architecture
+
+![System architecture diagram](assets/architecture.jpg)
+
+The architecture is a modular RAG pipeline designed for scalable, explainable analysis of AAO case PDFs. Data flows from raw documents to production APIs in discrete stages:
+
+- Ingestion & Storage  
+    - Batch or streaming PDF ingestion from local folders or cloud storage.  
+    - Raw PDFs stored alongside extracted metadata for provenance.
+
+- Text Extraction & Cleaning  
+    - OCR (when needed) and PDF text extraction.  
+    - Metadata normalization and noise removal (timestamps, producers, OCR artifacts).
+
+- Preprocessing & Semantic Chunking  
+    - Normalize text, remove boilerplate, and split into context-aware chunks (overlap-aware) using a SemanticChunker to preserve local coherence.
+
+- Embedding & Vector Indexing  
+    - Convert chunks to vector embeddings (configurable HF model).  
+    - Store vectors in a FAISS index with persistent backing and incremental update support.
+
+- Retrieval & Context Assembly  
+    - Nearest-neighbor search (cosine similarity) fetches top-k chunks for a query.  
+    - Optional reranking and context filtering to ensure relevance and token budget.
+
+- LLM Reasoning & RAG Response  
+    - Retrieved context is combined with the user query and passed to an LLM (e.g., Gemini 2.5 Flash via LangChain) to generate grounded, citation-aware answers.  
+    - Response postprocessing adds traceability (chunk IDs, source PDF, page numbers).
 
 ## Overview
 
