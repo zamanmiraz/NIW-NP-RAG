@@ -1,4 +1,4 @@
 # .gitignore
-.env.example
+.env
 /data/uscis_aao_pdfs
 /data/chunks_vector_store

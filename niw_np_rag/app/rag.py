@@ -9,7 +9,7 @@ from transformers import pipeline
 import torch
 
 class RAGPipeline:
-    def __init__(self, pdfs_path, vector_store_path = "data/faiss_store", semantic_chunking=True):
+    def __init__(self, pdfs_path, vector_store_path = "../../data/chunks_vector_store", semantic_chunking=True):
         self.pdfs_path = pdfs_path
         self.vector_store_path = vector_store_path
         self.semantic_chunking = semantic_chunking
@@ -39,10 +39,10 @@ class RAGPipeline:
         return vector_store
     
     def load_vector_store(self):
-        vector_store = FAISS.load_local(self.vector_store_path, self.embedding_model)
+        vector_store = FAISS.load_local(self.vector_store_path, self.embedding_model, allow_dangerous_deserialization=True)
         return vector_store
     
-    def get_retriever(self, query, k=5):
+    def get_retriever(self, k=5):
         vector_store = self.load_vector_store()
         retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": k})
         return retriever
