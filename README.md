@@ -2,14 +2,14 @@
 
 ## Retrieval-Augmented Generation (RAG) Pipeline for Analyzing USCIS AAO Case Documents
 
+![System architecture diagram](assets/architecture.jpg)
+
 This repository implements a **Retrieval-Augmented Generation (RAG)** system built to analyze **USCIS Administrative Appeals Office (AAO)** case PDFs — particularly for **National Interest Waiver (NIW)** petitions.  
 The pipeline semantically indexes and retrieves case information to support data-driven insights and question answering over hundreds of past case decisions.
 
 ---
 
 ## Architecture
-
-![System architecture diagram](assets/architecture.jpg)
 
 The architecture is a modular RAG pipeline designed for scalable, explainable analysis of AAO case PDFs. Data flows from raw documents to production APIs in discrete stages:
 

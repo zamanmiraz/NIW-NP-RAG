@@ -14,3 +14,4 @@ niw_np_rag/config/__init__.py
 niw_np_rag/config/config.py
 test/__init__.py
 test/env_test.py
+test/test_rag.py

@@ -3,20 +3,23 @@ import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain_core.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 from transformers import pipeline
 import torch
 
 class RAGPipeline:
-    def __init__(self, pdfs_path, vector_store_path = "../../data/chunks_vector_store", semantic_chunking=True):
+    def __init__(self, pdfs_path, vector_store_path = "./data/chunks_vector_store", semantic_chunking=True):
         self.pdfs_path = pdfs_path
         self.vector_store_path = vector_store_path
+        # ✅ Check and print the absolute path
+        abs_path = os.path.abspath(self.vector_store_path)
+        print(f"[INFO] Vector store path: {abs_path}")
         self.semantic_chunking = semantic_chunking
         self.device = 0 if torch.cuda.is_available() else -1
         self.embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-        self.semantic_chunker = SemanticChunker(model_name=self.embedding_model, chunk_size=500, overlap_size=50, embedding_function=self.embedding_model)
+        self.semantic_chunker = SemanticChunker(self.embedding_model, breakpoint_threshold_type='percentile', breakpoint_threshold_amount=90,)
 
     def chunk_documents(self, pdf, chunk_size=1000, chunk_overlap=100):
         document = PyPDFLoader(pdf).load()
@@ -40,6 +43,7 @@ class RAGPipeline:
     
     def load_vector_store(self):
         vector_store = FAISS.load_local(self.vector_store_path, self.embedding_model, allow_dangerous_deserialization=True)
+        print("Vector store loaded with", vector_store.index.ntotal, "vectors.")
         return vector_store
     
     def get_retriever(self, k=5):
