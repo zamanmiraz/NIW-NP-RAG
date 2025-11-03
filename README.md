@@ -1,89 +1,108 @@
 # NIW-NP-RAG
 
-## Retrieval-Augmented Generation (RAG) Pipeline for Analyzing USCIS AAO Case Documents
-
-![System architecture diagram](assets/architecture.jpg)
-
-This repository implements a **Retrieval-Augmented Generation (RAG)** system built to analyze **USCIS Administrative Appeals Office (AAO)** case PDFs — particularly for **National Interest Waiver (NIW)** petitions.  
-The pipeline semantically indexes and retrieves case information to support data-driven insights and question answering over hundreds of past case decisions.
-
----
+Retrieval-Augmented Generation (RAG) pipeline for analyzing USCIS Administrative Appeals Office (AAO) case PDFs with a focus on National Interest Waiver (NIW) decisions. The repository contains tools extract and preprocess text, build semantic embeddings, index with FAISS, and expose a RAG query service.
 
 ## Architecture
 
-The architecture is a modular RAG pipeline designed for scalable, explainable analysis of AAO case PDFs. Data flows from raw documents to production APIs in discrete stages:
+![NIW-NP-RAG Architecture](NIW-NP-RAG/assets/architecture.jpg)
 
-- Ingestion & Storage  
-    - Batch or streaming PDF ingestion from local folders or cloud storage.  
-    - Raw PDFs stored alongside extracted metadata for provenance.
-
-- Text Extraction & Cleaning  
-    - OCR (when needed) and PDF text extraction.  
-    - Metadata normalization and noise removal (timestamps, producers, OCR artifacts).
-
-- Preprocessing & Semantic Chunking  
-    - Normalize text, remove boilerplate, and split into context-aware chunks (overlap-aware) using a SemanticChunker to preserve local coherence.
-
-- Embedding & Vector Indexing  
-    - Convert chunks to vector embeddings (configurable HF model).  
-    - Store vectors in a FAISS index with persistent backing and incremental update support.
-
-- Retrieval & Context Assembly  
-    - Nearest-neighbor search (cosine similarity) fetches top-k chunks for a query.  
-    - Optional reranking and context filtering to ensure relevance and token budget.
-
-- LLM Reasoning & RAG Response  
-    - Retrieved context is combined with the user query and passed to an LLM (e.g., Gemini 2.5 Flash via LangChain) to generate grounded, citation-aware answers.  
-    - Response postprocessing adds traceability (chunk IDs, source PDF, page numbers).
-
-## Overview
-
-The RAG system combines **semantic chunking**, **vector embeddings**, and **context-aware LLM reasoning** to enable interactive querying of legal case data.  
-It can answer analytical and statistical questions such as:
-
-- “How many NIW cases were approved vs denied?”
-- “What were the most common reasons for denial?”
-- “Which supporting evidence was most persuasive in successful cases?”
 
 ---
 
-## Key Features
+## Features
 
-- **📄 PDF Ingestion & Metadata Cleaning:**  
-  Load multiple AAO case PDFs and clean metadata (creator, producer, timestamps).
-
-- **🧹 Text Preprocessing:**  
-  Normalize and structure extracted text to remove OCR noise and artifacts.
-
-- **🧠 Semantic Chunking:**  
-  Use Hugging Face embeddings with `SemanticChunker` to create contextually meaningful chunks rather than fixed-size splits.
-
-- **📦 Vector Store (FAISS):**  
-  Store and index embeddings in a **FAISS** database for fast semantic search.
-
-- **🔍 Context Retrieval:**  
-  Retrieve top-k relevant chunks using cosine similarity for each user query.
-
-- **💬 RAG-Based Question Answering:**  
-  Combine retrieved context with **Gemini 2.5 Flash** (or other LLMs via LangChain) to generate grounded, explainable answers.
-
-- **📊 Statistical Insights (Extended Feature):**  
-  Support structured aggregation queries (e.g., case counts, approval rates, denial trends) using the retrieved FAISS data.
-
-- **🚀 Deployment-Ready Architecture:**  
-  The project includes steps for deployment via **FastAPI** + **Uvicorn**, allowing external users to interact with the RAG system through an API endpoint.
+- PDF text extraction and basic cleanup (OCR fallback recommended for scanned docs)
+- Semantic chunking and embedding generation
+- FAISS-based vector store for fast semantic retrieval
+- RAG query interface using retrieved context + LLM prompt
+- Control files for external pause/stop of long-running crawls (PAUSE / STOP)
+- Example Streamlit UI and FastAPI/uvicorn service skeleton
 
 ---
 
-<!-- ## Getting Started
+## Quick Start
 
-1. **Clone this repository**
-   ```bash
-   git clone https://github.com/<your-username>/NIW-NP-RAG.git
-   cd NIW-NP-RAG
-   ```
+Here is a demo video of running NIW-NP-RAG:  
+[![Query Demo](NIW-NP-RAG/assets/query.webm)](NIW-NP-RAG/assets/query.webm)
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ``` -->
+### Prerequisites
+- Python 3.10+ (recommended to use a virtual environment)
+- Git
+
+### Setup
+1. Clone the repository and navigate to the project folder.
+2. Create and activate a virtual environment.
+3. Install the required dependencies:
+
+```powershell
+pip install -r requirements.txt
+```
+
+> **Note:** Obtain the data and place it in the `data/` folder. Contact me for access if needed.
+
+Run the API and UI
+```powershell
+# API
+uvicorn niw_np_rag.app.main:app --host 0.0.0.0 --port 8000
+
+# Streamlit UI (in another terminal)
+streamlit run streamlit_app.py
+```
+
+---
+
+## Folder structure
+
+``` text
+NIW-NP-RAG/                         # Project root directory
+│
+├── assets/                         # Static files, images, or supporting assets
+│
+├── niw_np_rag/                     # Main Python package
+│   ├── app/                        # Application modules (e.g., RAG pipeline, API)
+│   ├── config/                     # Configuration files and environment settings
+│   └── scripts/                    # Utility or preprocessing scripts
+│
+├── data/                           # (Optional) Raw and processed data storage
+│
+├── test/                           # Test scripts and small development environment
+│
+├── streamlit_app.py                # Streamlit UI entry point
+│
+└── README.md                       # Project documentation
+
+```
+
+---
+
+## Configuration
+
+- Save credentials or API keys (LLM, embedding providers) in environment variables or a config file not checked into source control.
+- Example environment variables:
+  - GOOGLE_API_KEY
+  - OPENAI_API_KEY
+  - VECTOR_STORE_PATH
+
+Place provider-specific configuration under `niw_np_rag/config/` and do not commit secrets.
+
+---
+
+
+## Contributing
+
+1. Fork the repo and create a feature branch
+2. Keep changes small and unit-tested
+3. Open a pull request with a description and testing steps
+4. Use `black`/`ruff` for style (if configured)
+
+---
+
+## License & attribution
+
+Specify project license here (e.g., MIT). Acknowledge any third-party tools, libraries, and data sources used.
+
+---
+
+## Contact
+
+For questions, open an issue or contact the maintainer via the GitHub repository.

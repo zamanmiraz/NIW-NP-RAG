@@ -4,10 +4,25 @@ from niw_np_rag.app.rag import RAGPipeline
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from transformers import pipeline
 import torch
+import logging
+import os
+from datetime import datetime
+
+# --- Logging Configuration ---
+LOG_DIR = os.path.join(os.path.dirname(__file__), "../../logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, "queries.log")
+
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 class LLMRAG:
     def __init__(self, model_name="gemini-2.5-flash", temperature=0.7):
-        rag = RAGPipeline(pdfs_path="../../data/uscis_aao_pdfs", vector_store_path="./data/chunks_vector_store", semantic_chunking=True)
+        rag = RAGPipeline(pdfs_path="../data/uscis_aao_pdfs", vector_store_path="./data/chunks_vector_store", semantic_chunking=True)
         self.retriever = rag.get_retriever(k=5)
         self.model_name = model_name
         self.temperature = temperature
@@ -21,10 +36,10 @@ class LLMRAG:
         urls = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
         return context, urls
     
-    def generate_response(self, query):
-        context = self.retrieve_context(query, k=5)
+    def generate_response_evaluator(self, query):
+        context, urls = self.retrieve_context(query, k=2000)
         system_prompt = system_prompt = (
-    "You are an expert immigration Q&A assistant specializing in National Interest Waiver (NIW) petitions. "
+    "You are an expert immigration Q&A assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
     "Your role is to describe what occurred in the retrieved context, focusing only on the information provided. "
     "You must not add external knowledge, interpretation, or personal evaluation.\n\n"
 
@@ -47,8 +62,10 @@ class LLMRAG:
     "⚠️ Important: You are only describing and summarizing what the retrieved context states. "
     "Do not analyze, speculate, or generate new conclusions beyond it. "
     "If a detail is missing, explicitly say that the context does not contain that information.\n\n"
-
-    "--- Retrieved Context ---\n{context}"
+    "Always specify your sources clearly by mentioning the document title, case identifier, or link "
+    "each time you reference contextual evidence.\n\n"
+    "Note: All retrieved context segments share the same URLs, as they originate from the same petitioner’s case.\n\n"
+    "--- Retrieved Context ---\n{context} and the source URLs are: {urls}"   
 )
         prompt = ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(
@@ -59,6 +76,45 @@ class LLMRAG:
             ("system", system_prompt),
             ("human", "{query}"),
         ])
-        formatted_prompt = prompt.format_messages(context=context, query=query)
+        formatted_prompt = prompt.format_messages(context=context, query=query, urls=urls)
         response = self.chat_model.invoke(formatted_prompt)
+        # ✅ Log query, response, and sources
+        logging.info(
+            f"QUERY: {query}\nRESPONSE: {response.content[:100]}...\nSOURCES: {', '.join(urls) if urls else 'No sources found'}"
+        )
+        return response
+
+    def generate_response(self, query):
+        context, urls = self.retrieve_context(query, k=2000)  # ✅ unpack both
+
+        system_prompt = (
+    "You are an expert legal assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
+    "Your task is to summarize and explain the information found in the retrieved context, "
+    "strictly based on the provided text without adding any external knowledge, opinions, or interpretations.\n\n"
+    "When referring to evidence, always cite your sources clearly by including the document title, "
+    "case identifier, or source URL each time you reference contextual information.\n\n"
+    "Note: All retrieved context segments share the same URLs, as they originate from the same petitioner’s case.\n\n"
+    "--- Retrieved Context ---\n{context}\n\n"
+    "--- Source URLs ---\n{urls}"
+        )
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{query}"),
+        ])
+
+        formatted_prompt = prompt.format_messages(context=context, query=query, urls=urls)  # ✅ include URLs
+        response = self.chat_model.invoke(formatted_prompt)
+
+        # ✅ Log query, response, and sources
+        logging.info(
+            f"QUERY: {query}\nRESPONSE: {response.content[:100]}...\nSOURCES: {', '.join(urls) if urls else 'No sources found'}"
+        )
+
+        # ✅ include both model response and URLs in output
+        # return {
+        #     "query": query,
+        #     "response": response.content if hasattr(response, "content") else str(response),
+        #     "sources": urls
+        # }
         return response

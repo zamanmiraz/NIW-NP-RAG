@@ -1,4 +1,53 @@
-# .gitignore
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.mypy_cache/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets
 .env
-/data/uscis_aao_pdfs
-/data/chunks_vector_store
+.env.local
+.env.*.local
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data, models, embeddings, vector stores
+/data/
+models/
+checkpoints/
+embeddings/
+vectorstores/
+*.ckpt
+*.pt
+*.bin
+*.onnx
+
+# Logs and reports
+logs/
+*.log
+.coverage
+coverage.xml
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+*.whl
+pip-wheel-metadata/
+
+# Misc
+nohup.out
