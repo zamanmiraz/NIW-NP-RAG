@@ -19,9 +19,8 @@ Retrieval-Augmented Generation (RAG) pipeline for analyzing USCIS Administrative
 ---
 
 ## Quick Start
-
-Here is a demo video of running NIW-NP-RAG:  
-[![Query Demo](/assets/query.webm)](/assets/query.webm)
+ 
+[![Query Demo](/assets/query.gif)](/assets/query.gif)
 
 ### Prerequisites
 - Python 3.10+ (recommended to use a virtual environment)
