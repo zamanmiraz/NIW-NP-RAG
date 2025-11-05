@@ -8,12 +8,12 @@ def health_check():
 
 @app.get("/query")
 def ask_question(query: str):
-    llm_rag = LLMRAG()
+    llm_rag = LLMRAG(k=5)
     response = llm_rag.generate_response(query)
     return {"query": query, "response": response.content}
 
 @app.get("/evaluate")
 def evaluate_question(query: str):
-    llm_rag = LLMRAG()
+    llm_rag = LLMRAG(k=5)
     response = llm_rag.generate_response_evaluator(query)
     return {"query": query, "response": response.content}

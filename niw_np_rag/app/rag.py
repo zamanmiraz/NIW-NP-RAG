@@ -4,7 +4,12 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_huggingface import HuggingFaceEmbeddings
+# vector stores
 from langchain_community.vectorstores import FAISS
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
+
 from transformers import pipeline
 import torch
 import logging
@@ -12,7 +17,7 @@ import glob
 from tqdm import tqdm
 import datetime
 
-# ✅ Configure logging
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -23,7 +28,7 @@ class RAGPipeline:
     def __init__(self, pdfs_path, vector_store_path = "./data/chunks_vector_store", semantic_chunking=True):
         self.pdfs_path = pdfs_path
         self.vector_store_path = vector_store_path
-        # ✅ Check and print the absolute path
+        # Check and print the absolute path
         abs_path = os.path.abspath(self.vector_store_path)
         self.semantic_chunking = semantic_chunking
         self.device = 0 if torch.cuda.is_available() else -1
@@ -32,9 +37,23 @@ class RAGPipeline:
         self.semantic_chunker = SemanticChunker(self.embedding_model, breakpoint_threshold_type='percentile', breakpoint_threshold_amount=90,)
 
     # -------------------------------------------------------------------------
+    # Filter the pdfs based on date in filename
+    # -------------------------------------------------------------------------
+    def filter_pdfs_by_date(self, pdf_files, cutoff_date=datetime.datetime(2016, 12, 27)):
+        filtered_pdfs = []
+        for pdf_file in pdf_files:
+            try:
+                date_str = os.path.basename(pdf_file).split('_')[0]
+                file_date = datetime.datetime.strptime(date_str, '%b%d%Y')
+                if file_date > cutoff_date:
+                    filtered_pdfs.append(pdf_file)
+            except (ValueError, IndexError):
+                logging.warning(f"[SKIP] Unexpected filename format: {pdf_file}")
+        return filtered_pdfs
+
+    # -------------------------------------------------------------------------
     # Chunk documents with semantic or recursive splitting
     # -------------------------------------------------------------------------
-
     def chunk_documents(self, pdf, chunk_size=1000, chunk_overlap=100):
         document = PyPDFLoader(pdf).load()
         if self.semantic_chunking:
@@ -47,28 +66,8 @@ class RAGPipeline:
     # -------------------------------------------------------------------------
     # Build and update FAISS vector store with progress and filtering
     # -------------------------------------------------------------------------
-    def build_vector_store(self):
-        """
-        Process all PDF files in the directory, split them into chunks, and store embeddings in FAISS.
-        Skips files before Dec 27, 2016. Periodically saves FAISS to disk.
-        """
-        logging.info("[BUILD] Starting vector store creation...")
-
-        pdf_files = glob.glob(os.path.join(self.pdfs_path, "*.pdf"))
-        filtered_pdf_files = []
-
-        # Filter PDFs based on filename date (e.g., "MAR052025_03B5203.pdf")
-        for pdf_file in pdf_files:
-            try:
-                date_str = os.path.basename(pdf_file).split('_')[0]
-                file_date = datetime.strptime(date_str, '%b%d%Y')
-                if file_date > datetime(2016, 12, 27):
-                    filtered_pdf_files.append(pdf_file)
-            except (ValueError, IndexError):
-                logging.warning(f"[SKIP] Unexpected filename format: {pdf_file}")
-
-        logging.info(f"[FILTER] {len(filtered_pdf_files)} PDFs will be processed after date filtering.")
-
+    def build_vector_store_FAISS(self):
+        filtered_pdf_files = self.filter_pdfs_by_date(glob.glob(os.path.join(self.pdfs_path, "*.pdf")))
         # Load existing FAISS store if available
         vector_store = None
         if os.path.exists(self.vector_store_path):
@@ -108,10 +107,46 @@ class RAGPipeline:
             logging.warning("[COMPLETE] No vector store was created — check data folder.")
 
         return vector_store
+    
+    # -------------------------------------------------------------------------
+    # Build vector store using Qdrant
+    # -------------------------------------------------------------------------
+    def build_vector_store_Qdrant(self):
+        client = QdrantClient(path="./data/qdrant_db")  # persistent local db
+        collection_name = "niw_chunks"
+
+        client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+                size=self.embedding_model.embedding_dimension,
+                distance=Distance.COSINE
+            )
+        )
+
+        # ✅ Initialize QdrantVectorStore once
+        vector_store = QdrantVectorStore(
+            client=client,
+            collection_name=collection_name,
+            embedding=self.embedding_model,
+        )
+
+        filtered_pdf_files = self.filter_pdfs_by_date(glob.glob(os.path.join(self.pdfs_path, "*.pdf")))
+
+        for pdf_file in tqdm(filtered_pdf_files, desc="Processing PDFs for Qdrant"):
+            try:
+                texts = self.chunk_documents(pdf_file)
+                vector_store.add_documents(texts)  # ✅ add to existing collection
+                logging.info(f"[ADD] Added chunks from: {pdf_file}")
+            except Exception as e:
+                logging.error(f"[ERROR] Failed processing {pdf_file}: {e}")
+        # Final save the vector store
+        
+        logging.info("[COMPLETE] All documents added to Qdrant collection.")
+        return vector_store
+
     # -------------------------------------------------------------------------
     # Load vector store and get retriever
     # -------------------------------------------------------------------------
-    
     def load_vector_store(self):
         abs_path = os.path.abspath(self.vector_store_path)
         logging.info(f"Loading vector store from {abs_path}...")

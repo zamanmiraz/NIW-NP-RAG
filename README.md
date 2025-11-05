@@ -13,7 +13,6 @@ Retrieval-Augmented Generation (RAG) pipeline for analyzing USCIS Administrative
 - Semantic chunking and embedding generation
 - FAISS-based vector store for fast semantic retrieval
 - RAG query interface using retrieved context + LLM prompt
-- Control files for external pause/stop of long-running crawls (PAUSE / STOP)
 - Example Streamlit UI and FastAPI/uvicorn service skeleton
 
 ---

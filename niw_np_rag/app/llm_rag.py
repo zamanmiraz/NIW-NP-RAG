@@ -21,23 +21,23 @@ logging.basicConfig(
 )
 
 class LLMRAG:
-    def __init__(self, model_name="gemini-2.5-flash", temperature=0.7):
+    def __init__(self, model_name="gemini-2.5-flash", k=100, temperature=0.7):
         rag = RAGPipeline(pdfs_path="../data/uscis_aao_pdfs", vector_store_path="./data/chunks_vector_store", semantic_chunking=True)
-        self.retriever = rag.get_retriever(k=5)
+        self.retriever = rag.get_retriever(k=k)
         self.model_name = model_name
         self.temperature = temperature
         self.device = 0 if torch.cuda.is_available() else -1
         self.chat_model = init_chat_model("gemini-2.5-flash", model_provider="google_genai", google_api_key=GOOGLE_API_KEY)
 
 
-    def retrieve_context(self, query, k=5):
+    def retrieve_context(self, query):
         docs = self.retriever.invoke(query)
         context = [doc.page_content for doc in docs]
         urls = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
         return context, urls
     
     def generate_response_evaluator(self, query):
-        context, urls = self.retrieve_context(query, k=2000)
+        context, urls = self.retrieve_context(query)
         system_prompt = system_prompt = (
     "You are an expert immigration Q&A assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
     "Your role is to describe what occurred in the retrieved context, focusing only on the information provided. "
@@ -85,7 +85,7 @@ class LLMRAG:
         return response
 
     def generate_response(self, query):
-        context, urls = self.retrieve_context(query, k=2000)  # ✅ unpack both
+        context, urls = self.retrieve_context(query)  # ✅ unpack both
 
         system_prompt = (
     "You are an expert legal assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
