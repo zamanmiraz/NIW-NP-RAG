@@ -33,6 +33,7 @@ class RAGPipeline:
         self.semantic_chunking = semantic_chunking
         self.device = 0 if torch.cuda.is_available() else -1
         self.embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+        # self.embedding_model = HuggingFaceEmbeddings(model_name="BAAI/bge-large-en-v1.5")
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         self.semantic_chunker = SemanticChunker(self.embedding_model, breakpoint_threshold_type='percentile', breakpoint_threshold_amount=90,)
 
@@ -115,10 +116,10 @@ class RAGPipeline:
         client = QdrantClient(path="./data/qdrant_db")  # persistent local db
         collection_name = "niw_chunks"
 
-        client.recreate_collection(
+        client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
-                size=self.embedding_model.embedding_dimension,
+                size=1024,  
                 distance=Distance.COSINE
             )
         )
@@ -131,16 +132,16 @@ class RAGPipeline:
         )
 
         filtered_pdf_files = self.filter_pdfs_by_date(glob.glob(os.path.join(self.pdfs_path, "*.pdf")))
-
+        count = 0
         for pdf_file in tqdm(filtered_pdf_files, desc="Processing PDFs for Qdrant"):
             try:
                 texts = self.chunk_documents(pdf_file)
                 vector_store.add_documents(texts)  # ✅ add to existing collection
-                logging.info(f"[ADD] Added chunks from: {pdf_file}")
+                tqdm.write(f"[ADD] Added chunks from: {pdf_file}")
+                count += 1
             except Exception as e:
                 logging.error(f"[ERROR] Failed processing {pdf_file}: {e}")
         # Final save the vector store
-        
         logging.info("[COMPLETE] All documents added to Qdrant collection.")
         return vector_store
 

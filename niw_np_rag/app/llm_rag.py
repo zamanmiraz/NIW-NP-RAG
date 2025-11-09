@@ -1,4 +1,6 @@
 from langchain.chat_models import init_chat_model
+from langchain.tools import tool
+from langchain.agents import create_agent
 from niw_np_rag.config.config import GOOGLE_API_KEY
 from niw_np_rag.app.rag import RAGPipeline
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
@@ -20,24 +22,37 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+def make_retrieve_context_tool(retriever):
+    @tool(response_format="content_and_artifact", description="Retrieve relevant context and URLs from the vector store.")
+    def retrieve_context(query: str):
+        """Retrieve the most relevant context and URLs from the vector store for the given query."""
+        docs = retriever.invoke(query)
+        context = [doc.page_content for doc in docs]
+        urls = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
+        return context, urls
+    return retrieve_context
+
+
+
 class LLMRAG:
     def __init__(self, model_name="gemini-2.5-flash", k=100, temperature=0.7):
         rag = RAGPipeline(pdfs_path="../data/uscis_aao_pdfs", vector_store_path="./data/chunks_vector_store", semantic_chunking=True)
         self.retriever = rag.get_retriever(k=k)
+        self.retrieve_context = make_retrieve_context_tool(self.retriever)
         self.model_name = model_name
         self.temperature = temperature
         self.device = 0 if torch.cuda.is_available() else -1
         self.chat_model = init_chat_model("gemini-2.5-flash", model_provider="google_genai", google_api_key=GOOGLE_API_KEY)
 
-
-    def retrieve_context(self, query):
-        docs = self.retriever.invoke(query)
-        context = [doc.page_content for doc in docs]
-        urls = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
-        return context, urls
+    # def retrieve_context(self, query):
+    #     """Retrieve the most relevant context and URLs from the vector store for the given query."""
+    #     docs = self.retriever.invoke(query)
+    #     context = [doc.page_content for doc in docs]
+    #     urls = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
+    #     return context, urls
     
     def generate_response_evaluator(self, query):
-        context, urls = self.retrieve_context(query)
+        # context, urls = self.retrieve_context(query)
         system_prompt = system_prompt = (
     "You are an expert immigration Q&A assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
     "Your role is to describe what occurred in the retrieved context, focusing only on the information provided. "
@@ -68,24 +83,45 @@ class LLMRAG:
     "--- Retrieved Context ---\n{context} and the source URLs are: {urls}"   
 )
         prompt = ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template(
-                "Using the following context:\n{context}\nAnswer the question:\n{query}"
-            )
-        ])
-        prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
             ("human", "{query}"),
         ])
-        formatted_prompt = prompt.format_messages(context=context, query=query, urls=urls)
-        response = self.chat_model.invoke(formatted_prompt)
+
+        # formatted_prompt = prompt.format_messages(context=context, query=query, urls=urls)  # ✅ include URLs
+        # response = self.chat_model.invoke(formatted_prompt)
+
         # ✅ Log query, response, and sources
-        logging.info(
-            f"QUERY: {query}\nRESPONSE: {response.content[:100]}...\nSOURCES: {', '.join(urls) if urls else 'No sources found'}"
-        )
-        return response
+        # logging.info(
+        #     f"QUERY: {query}\nRESPONSE: {response.content[:100]}...\nSOURCES: {', '.join(urls) if urls else 'No sources found'}"
+        # )
+
+        # ✅ include both model response and URLs in output
+        # return {
+        #     "query": query,
+        #     "response": response.content if hasattr(response, "content") else str(response),
+        #     "sources": urls
+        # }
+        tools = [self.retrieve_context]
+        agent = create_agent(model = self.chat_model, tools=tools, system_prompt=system_prompt)
+        # Stream and capture the final message
+        final_output = ""
+        for event in agent.stream(
+            {"messages": [{"role": "user", "content": query}]},
+            stream_mode="values",
+        ):
+            message = event["messages"][-1].content
+            print(message)  # optional: log in console
+            final_output = message
+
+        # return {
+        #     "query": query,
+        #     "response": final_output,
+        #     # "sources": urls
+        # }
+        return final_output
 
     def generate_response(self, query):
-        context, urls = self.retrieve_context(query)  # ✅ unpack both
+        # context, urls = self.retrieve_context(query)  # ✅ unpack both
 
         system_prompt = (
     "You are an expert legal assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
@@ -103,13 +139,13 @@ class LLMRAG:
             ("human", "{query}"),
         ])
 
-        formatted_prompt = prompt.format_messages(context=context, query=query, urls=urls)  # ✅ include URLs
-        response = self.chat_model.invoke(formatted_prompt)
+        # formatted_prompt = prompt.format_messages(context=context, query=query, urls=urls)  # ✅ include URLs
+        # response = self.chat_model.invoke(formatted_prompt)
 
         # ✅ Log query, response, and sources
-        logging.info(
-            f"QUERY: {query}\nRESPONSE: {response.content[:100]}...\nSOURCES: {', '.join(urls) if urls else 'No sources found'}"
-        )
+        # logging.info(
+        #     f"QUERY: {query}\nRESPONSE: {response.content[:100]}...\nSOURCES: {', '.join(urls) if urls else 'No sources found'}"
+        # )
 
         # ✅ include both model response and URLs in output
         # return {
@@ -117,4 +153,21 @@ class LLMRAG:
         #     "response": response.content if hasattr(response, "content") else str(response),
         #     "sources": urls
         # }
-        return response
+        tools = [self.retrieve_context]
+        agent = create_agent(model = self.chat_model, tools=tools, system_prompt=system_prompt)
+        # Stream and capture the final message
+        final_output = ""
+        for event in agent.stream(
+            {"messages": [{"role": "user", "content": query}]},
+            stream_mode="values",
+        ):
+            message = event["messages"][-1].content
+            print(message)  # optional: log in console
+            final_output = message
+
+        # return {
+        #     "query": query,
+        #     "response": final_output,
+        #     # "sources": urls
+        # }
+        return final_output
