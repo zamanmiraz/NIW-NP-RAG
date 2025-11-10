@@ -1,6 +1,7 @@
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
 from langchain.agents import create_agent
+from langchain.agents.middleware import PIIMiddleware
 from niw_np_rag.config.config import GOOGLE_API_KEY
 from niw_np_rag.app.rag import RAGPipeline
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
@@ -31,7 +32,6 @@ def make_retrieve_context_tool(retriever):
         urls = list({doc.metadata.get("source") for doc in docs if doc.metadata.get("source")})
         return context, urls
     return retrieve_context
-
 
 
 class LLMRAG:
@@ -102,7 +102,28 @@ class LLMRAG:
         #     "sources": urls
         # }
         tools = [self.retrieve_context]
-        agent = create_agent(model = self.chat_model, tools=tools, system_prompt=system_prompt)
+        agent = create_agent(model = self.chat_model, tools=tools, system_prompt=system_prompt, middleware=[
+        # Redact emails in user input before sending to model
+        PIIMiddleware(
+            "email",
+            strategy="redact",
+            apply_to_input=True,
+        ),
+        # Mask credit cards in user input
+        PIIMiddleware(
+            "credit_card",
+            strategy="mask",
+            apply_to_input=True,
+        ),
+        # Block API keys - raise error if detected
+        PIIMiddleware(
+            "api_key",
+            detector=r"sk-[a-zA-Z0-9]{32}",
+            strategy="block",
+            apply_to_input=True,
+                ),
+            ],
+        )
         # Stream and capture the final message
         final_output = ""
         for event in agent.stream(
@@ -154,7 +175,28 @@ class LLMRAG:
         #     "sources": urls
         # }
         tools = [self.retrieve_context]
-        agent = create_agent(model = self.chat_model, tools=tools, system_prompt=system_prompt)
+        agent = create_agent(model = self.chat_model, tools=tools, system_prompt=system_prompt, middleware=[
+        # Redact emails in user input before sending to model
+        PIIMiddleware(
+            "email",
+            strategy="redact",
+            apply_to_input=True,
+        ),
+        # Mask credit cards in user input
+        PIIMiddleware(
+            "credit_card",
+            strategy="mask",
+            apply_to_input=True,
+        ),
+        # Block API keys - raise error if detected
+        PIIMiddleware(
+            "api_key",
+            detector=r"sk-[a-zA-Z0-9]{32}",
+            strategy="block",
+            apply_to_input=True,
+                ),
+            ],
+        )
         # Stream and capture the final message
         final_output = ""
         for event in agent.stream(
