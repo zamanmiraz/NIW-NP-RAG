@@ -1,6 +1,9 @@
 import argparse
 import json
 import re
+import time
+from typing import List, Dict
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import List, Dict
 from tqdm import tqdm
@@ -92,21 +95,48 @@ def extract_text_from_pdf(path: Path) -> str:
 
 # ------------------ Main QA Generation ------------------
 def generate_qna_from_text(text: str, llm) -> List[Dict[str, str]]:
-    """Generate multiple question–answer pairs from input text using LLM."""
-    prompt = QA_PROMPT_TEMPLATE.format(system_prompt=SYSTEM_PROMPT_QUERY, text=text)  # limit for context
+    """
+    Generate multiple question–answer–context triples from input text using LLM.
+    """
+    # Build prompt
+    prompt = QA_PROMPT_TEMPLATE.format(system_prompt=SYSTEM_PROMPT_QUERY, text=text)
     response = llm.invoke(prompt)
     response = response.content if hasattr(response, "content") else str(response)
     print("Generated Response:\n", response)  # Debug print
 
-    # Parse "question:" and "answer:" pairs
-    qna_pairs = []
+    qna_list = []
     qa_blocks = re.split(r"(?=question:)", response, flags=re.IGNORECASE)
+
     for block in qa_blocks:
         q_match = re.search(r"question:\s*(.*)", block, flags=re.IGNORECASE)
         a_match = re.search(r"answer:\s*(.*)", block, flags=re.IGNORECASE)
-        if q_match and a_match:
-            qna_pairs.append({"question": q_match.group(1).strip(), "answer": a_match.group(1).strip()})
-    return qna_pairs
+        if not (q_match and a_match):
+            continue
+
+        question = q_match.group(1).strip()
+        answer = a_match.group(1).strip()
+
+        # -----------------------------
+        # Find the context that best matches the answer text
+        # -----------------------------
+        # Split the text into small segments (e.g., 3–5 sentences)
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        best_context, best_score = "", 0.0
+        for i in range(len(sentences)):
+            segment = " ".join(sentences[i:i+3])  # 3-sentence sliding window
+            score = SequenceMatcher(None, answer.lower(), segment.lower()).ratio()
+            if score > best_score:
+                best_score = score
+                best_context = segment
+
+        qna_list.append({
+            "question": question,
+            "answer": answer,
+            "context": best_context.strip(),
+            "similarity_score": round(best_score, 3)
+        })
+
+    return qna_list
 
 # ------------------ Entry Point ------------------
 def main(pdf_dir: str, output_path: str):
@@ -116,7 +146,7 @@ def main(pdf_dir: str, output_path: str):
     dataset = []
     pdf_files = filter_pdfs_by_date(list(Path(pdf_dir).glob("*.pdf")))
     print(Path(pdf_dir))
-    for pdf_file in tqdm(pdf_files, desc="Processing PDFs"):
+    for pdf_file in tqdm(pdf_files[:5], desc="Processing PDFs"):
         text = extract_text_from_pdf(pdf_file)
         print(f"Processing {pdf_file.name}, extracted {len(text)} characters of text.")
         qna_pairs = generate_qna_from_text(text, llm)
@@ -124,16 +154,18 @@ def main(pdf_dir: str, output_path: str):
             dataset.append({
                 "source": pdf_file.name,
                 "question": item["question"],
-                "answer": item["answer"]
+                "answer": item["answer"],
+                "context": item["context"],
+                "similarity_score": item["similarity_score"]
             })
-        extract = 
-        break
+        # sleep for a short duration to avoid rate limits
+        time.sleep(5)
 
-    # Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    # with open(output_path, "w", encoding="utf-8") as f:
-    #     json.dump(dataset, f, indent=2, ensure_ascii=False)
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(dataset, f, indent=2, ensure_ascii=False)
 
-    # print(f"✅ Saved {len(dataset)} question–answer pairs to {output_path}")
+    print(f"✅ Saved {len(dataset)} question–answer pairs to {output_path}")
 
 # ------------------ CLI ------------------
 if __name__ == "__main__":
