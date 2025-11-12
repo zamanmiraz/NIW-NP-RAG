@@ -141,8 +141,8 @@ def generate_qna_from_text(text: str, llm) -> List[Dict[str, str]]:
 # ------------------ Entry Point ------------------
 def main(pdf_dir: str, output_path: str):
     """Generate question–answer dataset from all PDFs in a directory."""
-    # llm = init_chat_model("gemini-2.5-flash", model_provider="google_genai", google_api_key=GOOGLE_API_KEY)
-    llm = local_llm  # Use local LLM for generation
+    llm = init_chat_model("gemini-2.5-flash", model_provider="google_genai", google_api_key=GOOGLE_API_KEY)
+    # llm = local_llm  # Use local LLM for generation
     dataset = []
     pdf_files = filter_pdfs_by_date(list(Path(pdf_dir).glob("*.pdf")))
     print(Path(pdf_dir))

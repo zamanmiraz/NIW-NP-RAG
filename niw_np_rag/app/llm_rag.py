@@ -131,7 +131,6 @@ class LLMRAG:
             stream_mode="values",
         ):
             message = event["messages"][-1].content
-            print(message)  # optional: log in console
             final_output = message
 
         # return {
@@ -204,7 +203,6 @@ class LLMRAG:
             stream_mode="values",
         ):
             message = event["messages"][-1].content
-            print(message)  # optional: log in console
             final_output = message
 
         # return {
