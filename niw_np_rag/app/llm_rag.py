@@ -5,7 +5,7 @@ from langchain.agents.middleware import PIIMiddleware
 from niw_np_rag.config.config import GOOGLE_API_KEY
 from niw_np_rag.app.rag import RAGPipeline
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
-from transformers import pipeline
+# from transformers import pipeline
 import torch
 import logging
 import os
@@ -36,7 +36,7 @@ def make_retrieve_context_tool(retriever):
 
 class LLMRAG:
     def __init__(self, model_name="gemini-2.5-flash", k=100, temperature=0.7):
-        rag = RAGPipeline(pdfs_path="../data/uscis_aao_pdfs", vector_store_path="./data/chunks_vector_store", semantic_chunking=True)
+        rag = RAGPipeline(pdfs_path="../data/uscis_aao_pdfs", vector_store_path="./data/chunks_vector_store_faiss", semantic_chunking=True)
         self.retriever = rag.get_retriever(k=k)
         self.retrieve_context = make_retrieve_context_tool(self.retriever)
         self.model_name = model_name

@@ -1,0 +1,12 @@
+# Ignore data and cache folders
+data/uscis_aao_pdfs
+data/chunks_vector_store
+
+# Optional: ignore other unneeded stuff
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+.git/
+.env
+*.ipynb_checkpoints

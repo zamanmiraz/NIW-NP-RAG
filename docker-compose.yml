@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  rag_app:
+    build: .
+    container_name: rag_app
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      # Persist FAISS vector store data locally
+      - ./data/chunks_vector_store_faiss:/app/data/chunks_vector_store_faiss
+      # Mount the full codebase for development (optional)
+      - .:/app
+    command: >
+      uvicorn niw_np_rag.app.main:app
+      --host 0.0.0.0
+      --port 8080
+
+networks:
+  default:
+    name: rag_network

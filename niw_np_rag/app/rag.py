@@ -10,7 +10,7 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 
-from transformers import pipeline
+# from transformers import pipeline
 import torch
 import logging
 import glob
@@ -25,11 +25,12 @@ logging.basicConfig(
 )
 
 class RAGPipeline:
-    def __init__(self, pdfs_path, vector_store_path = "./data/chunks_vector_store", semantic_chunking=True):
+    def __init__(self, pdfs_path, vector_store_path = "./data/chunks_vector_store_faiss", semantic_chunking=True):
         self.pdfs_path = pdfs_path
         self.vector_store_path = vector_store_path
         # Check and print the absolute path
         abs_path = os.path.abspath(self.vector_store_path)
+        print(f"Vector store absolute path: {abs_path}")
         self.semantic_chunking = semantic_chunking
         self.device = 0 if torch.cuda.is_available() else -1
         self.embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
