@@ -6,6 +6,11 @@ app = FastAPI(title="NIW-NP-RAG", version="0.1.0")
 def health_check():
     return {"status": "ok"}
 
+@app.get("/")
+def home():
+    return {"message": "NIW-NP-RAG API is running 🚀", "endpoints": ["/health", "/query", "/evaluate"]}
+
+
 # @app.get("/query")
 # def ask_question(query: str):
 #     llm_rag = LLMRAG(k=5)
