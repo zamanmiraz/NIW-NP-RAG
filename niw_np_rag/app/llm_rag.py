@@ -53,7 +53,7 @@ class LLMRAG:
     
     def generate_response_evaluator(self, query):
         # context, urls = self.retrieve_context(query)
-        system_prompt = system_prompt = (
+        system_prompt = (
     "You are an expert immigration Q&A assistant specializing in EB2 National Interest Waiver (NIW) petitions. "
     "Your role is to describe what occurred in the retrieved context, focusing only on the information provided. "
     "You must not add external knowledge, interpretation, or personal evaluation.\n\n"
