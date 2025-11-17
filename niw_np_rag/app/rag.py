@@ -125,7 +125,6 @@ class RAGPipeline:
             )
         )
 
-        # ✅ Initialize QdrantVectorStore once
         vector_store = QdrantVectorStore(
             client=client,
             collection_name=collection_name,
@@ -137,7 +136,7 @@ class RAGPipeline:
         for pdf_file in tqdm(filtered_pdf_files, desc="Processing PDFs for Qdrant"):
             try:
                 texts = self.chunk_documents(pdf_file)
-                vector_store.add_documents(texts)  # ✅ add to existing collection
+                vector_store.add_documents(texts)  
                 tqdm.write(f"[ADD] Added chunks from: {pdf_file}")
                 count += 1
             except Exception as e:
