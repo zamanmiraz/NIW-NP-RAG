@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # --- Backend URL ---
-FASTAPI_URL = "http://localhost:8000"
+FASTAPI_URL = "http://localhost:8080"
 
 # --- Page Config ---
 st.set_page_config(page_title="NIW-NP-RAG Explorer", page_icon="📄", layout="wide")

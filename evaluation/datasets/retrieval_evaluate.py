@@ -12,6 +12,11 @@ rag = RAGPipeline(
     semantic_chunking=True
 )
 
+def distance(a, list_b):
+    """Compute minimum Levenshtein distance between string a and any string in list_b."""
+    from Levenshtein import distance as lev_distance
+    return min(lev_distance(a, b) for b in list_b)
+
 retriever = rag.get_retriever(k=5)
 
 
@@ -38,7 +43,7 @@ def evaluate_recall_at_k(dataset, retriever, k=5):
 
         # Check if ground-truth context appears in retrieved docs
         hit = any(
-            ground_truth_context in retrieved_doc
+            distance (ground_truth_context, retrieved_texts) in retrieved_doc
             for retrieved_doc in retrieved_texts
         )
 
