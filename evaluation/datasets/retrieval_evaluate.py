@@ -17,6 +17,9 @@ def distance(a, list_b):
     from Levenshtein import distance as lev_distance
     return min(lev_distance(a, b) for b in list_b)
 
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
 retriever = rag.get_retriever(k=5)
 
 
