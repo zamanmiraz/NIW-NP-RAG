@@ -9,13 +9,25 @@ Retrieval-Augmented Generation (RAG) pipeline for analyzing USCIS Administrative
 
 ## Features
 
-- PDF text extraction and basic cleanup (OCR fallback recommended for scanned docs)
-- Semantic chunking and embedding generation
-- FAISS-based vector store for fast semantic retrieval
-- RAG query interface using retrieved context + LLM prompt
-- Example Streamlit UI and FastAPI/uvicorn service skeleton
+- **PDF Crawling & Download**: Automated crawler with polite throttling, deduplication, and pause/stop controls
+- **Text Extraction**: Robust PDF parsing with OCR fallback for scanned documents
+- **Semantic Chunking**: Intelligent document splitting using embedding-based boundaries
+- **Vector Embeddings**: High-quality semantic embeddings via sentence-transformers or cloud providers
+- **FAISS Indexing**: Fast approximate nearest-neighbor search for semantic retrieval
+- **RAG Pipeline**: Retrieve relevant context and generate answers using LLM prompts
+- **Web UI**: Streamlit interface for interactive queries and document exploration
+- **REST API**: FastAPI service for programmatic access and integration
 
----
+### Retrieval Performance
+
+Evaluated on a held-out test set of NIW case queries:
+
+| Metric | Score |
+|--------|-------|
+| Recall@K | 72.00% |
+| Precision@K | 20.80% |
+| Mean Reciprocal Rank (MRR) | 0.70 |
+| Normalized Discounted Cumulative Gain (nDCG@K) | 0.6957 |
 
 ## Quick Start
  
